@@ -1,0 +1,29 @@
+{
+  "name": "mizan-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mizan — Faraid calculation and draft Iratha document generation. Next.js production frontend, built once the mizan_chat_artifact.html prototype was validated.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "next": "14.2.18",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/sdk": "0.32.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.15",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "typescript": "5.5.4",
+    "vitest": "2.1.4"
+  }
+}
