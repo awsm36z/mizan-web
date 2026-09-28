@@ -807,5 +807,7 @@ export const ZERO_TMPL: Record<Lang, (rel: string, label: string) => string> = {
   dar: (rel, label) => `${rel} ما كيتوصلش بحتى نصيب (${label}).`,
 };
 
-export const BUSINESS_PLAN_URL = "https://claude.ai/code/artifact/be83cc1c-01a1-428c-8484-aa69e32a7c2a";
-export const PITCH_DECK_URL = "https://claude.ai/code/artifact/c2e38d57-21fe-4b5a-9c8c-91fdd8bcd830";
+// Investor materials are private, so these links are opt-in per deployment
+// and the portfolio panel hides any that aren't configured.
+export const BUSINESS_PLAN_URL = process.env.NEXT_PUBLIC_BUSINESS_PLAN_URL || "";
+export const PITCH_DECK_URL = process.env.NEXT_PUBLIC_PITCH_DECK_URL || "";

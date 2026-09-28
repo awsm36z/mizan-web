@@ -4,10 +4,8 @@
 // renderPortfolioPanel() in the HTML prototype: the 4-product roadmap
 // (Calculate/Pro/Family/Verify) with Live/Coming soon tags, the two
 // waitlist-trigger buttons, and links out to the business plan and pitch
-// deck. Those two links point at the same published Artifact URLs the
-// source file used (BUSINESS_PLAN_URL / PITCH_DECK_URL in lib/i18n.ts) —
-// in a real production deployment they'd point at wherever that plan/deck
-// is actually published from Mizan's own domain.
+// deck. Those two links come from NEXT_PUBLIC_BUSINESS_PLAN_URL /
+// NEXT_PUBLIC_PITCH_DECK_URL and are only rendered when configured.
 
 import { useState } from "react";
 import { useLang } from "./LangProvider";
@@ -57,14 +55,20 @@ export function PortfolioPanel() {
         </button>
       </div>
 
-      <div className="portfolio-links">
-        <a href={BUSINESS_PLAN_URL} target="_blank" rel="noopener noreferrer">
-          {t(lang, "readBusinessPlanLink")}
-        </a>
-        <a href={PITCH_DECK_URL} target="_blank" rel="noopener noreferrer">
-          {t(lang, "readPitchDeckLink")}
-        </a>
-      </div>
+      {(BUSINESS_PLAN_URL || PITCH_DECK_URL) && (
+        <div className="portfolio-links">
+          {BUSINESS_PLAN_URL && (
+            <a href={BUSINESS_PLAN_URL} target="_blank" rel="noopener noreferrer">
+              {t(lang, "readBusinessPlanLink")}
+            </a>
+          )}
+          {PITCH_DECK_URL && (
+            <a href={PITCH_DECK_URL} target="_blank" rel="noopener noreferrer">
+              {t(lang, "readPitchDeckLink")}
+            </a>
+          )}
+        </div>
+      )}
 
       {waitlistKind && <WaitlistModal lang={lang} kind={waitlistKind} onClose={() => setWaitlistKind(null)} />}
     </details>

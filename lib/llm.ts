@@ -40,6 +40,13 @@ const RELATIONS: Relation[] = [
 ];
 const SINGLE_ONLY: Relation[] = ["husband", "wife", "father", "mother"];
 
+// Overridable per deployment; claude-opus-5 accepts the forced tool_choice
+// EXTRACT relies on. Both calls are short, well-specified tasks, so they run
+// at low effort, with max_tokens headroom because thinking tokens count
+// against it.
+const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5";
+const EFFORT = { effort: "low" } as const;
+
 const LANG_NAME: Record<Lang, string> = {
   en: "English",
   fr: "French",
@@ -116,8 +123,9 @@ export async function runExtract(
 
   try {
     const response = await client.messages.create({
-      model: "claude-sonnet-4-5",
-      max_tokens: 512,
+      model: MODEL,
+      max_tokens: 4096,
+      output_config: EFFORT,
       system:
         `You extract Islamic-inheritance (Faraid) heir counts from a family's own description of who survives a decedent. ` +
         `The user is writing in ${LANG_NAME[lang]}. Only these eight relations exist in this system: husband, wife, son, ` +
@@ -206,8 +214,9 @@ export async function runExplain(result: ComputeResult, lang: Lang): Promise<Exp
           : "Your previous explanation stated a fraction that did not match the computed shares above exactly. " +
             "Rewrite it, using ONLY the exact fractions given above.";
       const response = await client.messages.create({
-        model: "claude-sonnet-4-5",
-        max_tokens: 400,
+        model: MODEL,
+        max_tokens: 4096,
+        output_config: EFFORT,
         system,
         messages: [{ role: "user", content: buildUserMsg(correction) }],
       });

@@ -7,3 +7,4 @@ dist
 *.log
 data/waitlist.json
 data/demo-activity.json
+tsconfig.tsbuildinfo

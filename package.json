@@ -2,7 +2,7 @@
   "name": "mizan-web",
   "version": "0.1.0",
   "private": true,
-  "description": "Mizan — Faraid calculation and draft Iratha document generation. Next.js production frontend, built once the mizan_chat_artifact.html prototype was validated.",
+  "description": "AI-assisted Islamic inheritance (Faraid) calculator and draft heirship-document generator for Morocco, in Arabic, French, English and Darija.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -17,7 +17,7 @@
     "react-dom": "18.3.1"
   },
   "optionalDependencies": {
-    "@anthropic-ai/sdk": "0.32.1"
+    "@anthropic-ai/sdk": "0.128.0"
   },
   "devDependencies": {
     "@types/node": "20.14.15",
