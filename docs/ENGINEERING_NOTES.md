@@ -1,4 +1,8 @@
-# Mizan — Faraid calculator + draft Iratha generator (Next.js port)
+# Engineering notes: porting the prototype to Next.js
+
+These are the design and porting notes written while turning the validated
+HTML prototype into this Next.js app. The project overview is in the
+[README](../README.md).
 
 Mizan Calculate is a Morocco-exclusive, trilingual+Darija (English /
 French / Modern Standard Arabic / Moroccan Darija) Islamic inheritance
@@ -69,8 +73,8 @@ lib/
   types.ts       Shared types: Lang, Relation, HeirDraft, ChatStage,
                  ChatTurnRequest/Response, ComputeResult, WaitlistEntry…
   engine.ts      computeShares() — the one compute engine (Frac, 'awl,
-                 radd, el-gharâwyn). Not modified for this port; ported
-                 verbatim from the validated HTML prototype.
+                 radd, el-gharâwyn). Ported from the validated HTML
+                 prototype, with the two fixes noted below.
   extract.ts     extractDraft() — deterministic keyword/pattern EXTRACT
                  fallback, all 4 languages. Also ported verbatim.
   explain.ts     Deterministic per-language EXPLAIN template — the
@@ -108,6 +112,8 @@ tests/
 | Variable            | Required | Purpose                                                                 |
 | -------------------- | -------- | ------------------------------------------------------------------------ |
 | `ANTHROPIC_API_KEY`  | No       | Enables the Claude-backed EXTRACT/EXPLAIN paths in `lib/llm.ts`. Without it, the app runs fully on the deterministic fallbacks — no external dependency needed to build, test, or run it. |
+| `ANTHROPIC_MODEL`    | No       | Overrides the model used by `lib/llm.ts` (default `claude-opus-5`). |
+| `NEXT_PUBLIC_BUSINESS_PLAN_URL`, `NEXT_PUBLIC_PITCH_DECK_URL` | No | Optional links shown in the platform panel. Hidden when unset. |
 
 `@anthropic-ai/sdk` is declared as an `optionalDependency` in
 `package.json` and is loaded via a guarded dynamic `import()` — it does
@@ -163,34 +169,25 @@ resolving:
    table. A one-line "class" note was added under each relation name in
    the heir column so the class is visible at a glance, without altering
    the ported header labels themselves.
-3. **A confirmed engine limitation, pinned down rather than fixed.**
-   Exhaustive tracing of `lib/engine.ts`'s cascade shows that
-   `confidence: "unsupported"` is never actually reachable for any valid
-   `HeirDraft` within its own 8 modeled relations — every combination
-   resolves to a sum of exactly 1 via the fardh/asaba/'awl/radd cascade.
-   The real gap found instead: when 'awl is triggered by a spouse +
-   descendant with no son/father present, and a full sibling is *also* in
-   the draft, that sibling is silently absent from the result (`lines`
-   still sums to exactly 1, so the final safety check never fires). This
-   is documented and tested in `tests/engine.test.ts` rather than patched
-   — `lib/engine.ts` was supplied as an already-validated, frozen port of
-   the prototype's own engine, and this port's job was porting the
-   frontend around it, not re-auditing the Faraid math.
-4. **A confirmed `lib/extract.ts` Darija quirk, worked around in tests,
-   not in the source.** `stripArabicConjunction()` strips any leading `و`
-   longer than three characters except a two-word exception list, with no
-   way to distinguish a genuine word-initial `و` from the attached "and"
-   conjunction. This silently breaks the plural `ولاد` ("sons") and the
-   number words `واحد`/`وحدة` ("one") specifically — they get stripped
-   into non-matching forms. `tests/extract.test.ts`'s bare-plural test
-   uses `بنات` instead (unaffected) and documents the `ولاد` case inline;
-   `lib/extract.ts` itself was supplied as an already-written fallback
-   path and was left untouched.
+3. **An engine gap, found during the port and since fixed.** When 'awl
+   was triggered by a spouse + descendants with no son or father, a full
+   sibling present in the draft silently disappeared from the result
+   (the lines still summed to exactly 1, so the final safety check never
+   fired). The shares themselves were right, since a residuary sibling
+   gets nothing once 'awl has consumed the estate, but the heir was
+   missing from the output. `lib/engine.ts` now emits an explicit zero
+   line for them, and rejects a draft that contains both a husband and a
+   wife. Both are covered in `tests/engine.test.ts`.
+4. **A Darija extraction bug, found during the port and since fixed.**
+   `stripArabicConjunction()` used to strip any leading `و` from words
+   longer than three characters, so words that genuinely start with `و`
+   (`ولاد` "sons", `واحد`/`وحدة` "one") were mangled and never matched. It
+   now keeps a word that is already known and only strips the prefix when
+   the remainder is a known word. Covered in `tests/extract.test.ts`.
 5. **The business plan / pitch deck links** (`BUSINESS_PLAN_URL` /
-   `PITCH_DECK_URL` in `lib/i18n.ts`) point at the same published Artifact
-   URLs the source HTML file used. In a real production deployment these
-   would point at wherever that plan/deck is actually published from
-   Mizan's own domain.
+   `PITCH_DECK_URL` in `lib/i18n.ts`) are read from
+   `NEXT_PUBLIC_BUSINESS_PLAN_URL` / `NEXT_PUBLIC_PITCH_DECK_URL` and hidden
+   when unset, since those documents are private.
 6. **A stray `"computed"` incoming `stage`** on `/api/chat/turn` (which
    the client should never actually send, since it always resets to
    `"collecting"` right after a compute) is treated the same as a fresh
