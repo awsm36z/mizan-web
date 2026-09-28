@@ -66,16 +66,26 @@ const AR_TRIGGERS: Record<Relation, Array<{ p: string; c: number }>> = {
 };
 const AR_SINGLE_ONLY = new Set<Relation>(["husband", "wife", "father", "mother"]);
 
-function stripArabicConjunction(word: string): string {
-  if (word.length > 3 && (word[0] === "و" || word[0] === "ف") && !["والد", "والدة"].includes(word)) {
+// Strips an attached و/ف ("and"/"then") prefix, but only when the word
+// isn't already a known word on its own. Several real words begin with و
+// (والد "father", ولاد "sons", واحد "one"), so blindly stripping it turns
+// them into non-words that never match.
+function stripArabicConjunction(word: string, known: Set<string>): string {
+  if (known.has(word)) return word;
+  if (word.length > 2 && (word[0] === "و" || word[0] === "ف") && known.has(word.slice(1))) {
     return word.slice(1);
   }
   return word;
 }
 
+const AR_KNOWN_WORDS = new Set(Object.values(AR_TRIGGERS).flat().map((t) => t.p));
+
 function extractDraftArabic(text: string, currentDraft: HeirDraft): HeirDraft {
   const draft = { ...currentDraft };
-  const words = text.split(/\s+/).map((w) => w.replace(/[.,!?،؛]/g, "")).map(stripArabicConjunction);
+  const words = text
+    .split(/\s+/)
+    .map((w) => w.replace(/[.,!?،؛]/g, ""))
+    .map((w) => stripArabicConjunction(w, AR_KNOWN_WORDS));
   for (const word of words) {
     for (const relation of Object.keys(AR_TRIGGERS) as Relation[]) {
       for (const { p, c } of AR_TRIGGERS[relation]) {
@@ -112,10 +122,17 @@ const DARIJA_TRIGGERS: Record<Relation, string[]> = {
 };
 const DARIJA_PLURAL_FORMS = new Set(["ولاد", "بنات", "خوت", "خواتي"]);
 const DARIJA_SINGLE_ONLY = new Set<Relation>(["husband", "wife", "father", "mother"]);
+const DARIJA_KNOWN_WORDS = new Set([
+  ...Object.values(DARIJA_TRIGGERS).flat().flatMap((phrase) => phrase.split(/\s+/)),
+  ...Object.keys(DARIJA_NUMBER_WORDS),
+]);
 
 function extractDraftDarija(text: string, currentDraft: HeirDraft): HeirDraft {
   const draft = { ...currentDraft };
-  const words = text.split(/\s+/).map((w) => w.replace(/[.,!?،؛]/g, "")).map(stripArabicConjunction);
+  const words = text
+    .split(/\s+/)
+    .map((w) => w.replace(/[.,!?،؛]/g, ""))
+    .map((w) => stripArabicConjunction(w, DARIJA_KNOWN_WORDS));
 
   const allPhrases: Array<{ relation: Relation; phraseWords: string[] }> = [];
   for (const relation of Object.keys(DARIJA_TRIGGERS) as Relation[]) {

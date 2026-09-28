@@ -1,7 +1,10 @@
 // The Mizan compute engine — ported line-for-line from the validated
 // mizan_chat_artifact.html (the JS `computeShares` / `Frac` that a Playwright
 // suite and hand-verification against the Python engine's golden set
-// confirmed correct before this React build began).
+// confirmed correct before this React build began). Two fixes have been
+// made since the port: a husband-and-wife draft is rejected as
+// unsupported, and residuary siblings left with nothing after 'awl now get
+// an explicit zero line instead of disappearing (see tests/engine.test.ts).
 //
 // SCOPE, stated as plainly here as it was in the HTML prototype: this is a
 // bounded subset of Faraid — husband/wife, son/daughter, father, mother,
@@ -87,6 +90,13 @@ export function computeShares(h: HeirDraft): ComputeResult {
   const lines: Line[] = [];
   let unsupported = false;
   let specialCase: "gharawyn" | null = null;
+
+  // A decedent leaves either a husband or a wife, never both. Extraction
+  // (keyword or model) can still produce that contradiction, so refuse to
+  // compute anything rather than return shares for an impossible family.
+  if (h.husband > 0 && h.wife > 0) {
+    return { lines: [], confidence: "unsupported", specialCase: null, awlApplied: false, raddApplied: false };
+  }
 
   // ---- el-gharâwyn (Art. 366): husband/wife + father + mother, nothing else ----
   const noSiblings = h.full_brother === 0 && h.full_sister === 0;
@@ -202,6 +212,28 @@ export function computeShares(h: HeirDraft): ComputeResult {
       } else {
         unsupported = true;
       }
+    }
+  }
+
+  // Residuary siblings who are present but receive nothing because the
+  // fixed shares consumed the whole estate (always the case once 'awl has
+  // applied) still get an explicit zero line. Without this they would
+  // silently vanish from the result while it still summed to exactly 1.
+  if (!siblingsExcluded) {
+    const hasLine = (r: Line["relation"]) => lines.some((l) => l.relation === r);
+    if (h.full_brother > 0 && !hasLine("full_brother")) {
+      lines.push({ relation: "full_brother", share: new Frac(0, 1), cls: "asaba", count: h.full_brother, isEach: true, article: "348" });
+    }
+    if (h.full_sister > 0 && !hasLine("full_sister")) {
+      const withBrother = h.full_brother > 0;
+      lines.push({
+        relation: "full_sister",
+        share: new Frac(0, 1),
+        cls: withBrother ? "asaba" : "asaba_with_other",
+        count: h.full_sister,
+        isEach: true,
+        article: withBrother ? "351.3" : "352",
+      });
     }
   }
 

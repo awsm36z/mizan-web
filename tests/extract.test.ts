@@ -76,19 +76,24 @@ describe("extractDraft — Moroccan Darija", () => {
     // count is a genuine ambiguity in spoken Darija ("some daughters") —
     // the documented, honest behavior is to default to 2 rather than
     // guess higher.
-    //
-    // Note: "ولاد" (sons, plural) would be the more obvious word to use
-    // here, but it exposes a real, pre-existing quirk in the frozen
-    // lib/extract.ts this test deliberately avoids rather than papers
-    // over: stripArabicConjunction() strips ANY leading و longer than 3
-    // characters except an explicit two-word exception list, with no way
-    // to tell a genuine word-initial و (as in ولاد) apart from the
-    // attached "and" conjunction — so "ولاد" always becomes "لاد" and
-    // never matches DARIJA_TRIGGERS.son at all. "بنات"/"خوت"/"خواتي" don't
-    // start with و, so they aren't affected. See README's "judgment
-    // calls" for the same note.
     const draft = extractDraft("عندي بنات", "dar", EMPTY_DRAFT);
     expect(draft.daughter).toBe(2);
+  });
+
+  it("keeps words that genuinely start with و instead of stripping it as a conjunction", () => {
+    // ولاد ("sons") and وحدة ("one") begin with و as part of the word
+    // itself. They used to be stripped to لاد / حدة and never matched.
+    expect(extractDraft("عندي ولاد", "dar", EMPTY_DRAFT).son).toBe(2);
+    expect(extractDraft("بنت وحدة", "dar", EMPTY_DRAFT).daughter).toBe(1);
+    expect(extractDraft("تلاتة ولاد", "dar", EMPTY_DRAFT).son).toBe(3);
+  });
+
+  it("still strips the attached و when it really means 'and'", () => {
+    // "وولاد" = "and sons", "وبويا" = "and my father".
+    const draft = extractDraft("مرتي وجوج ولاد وبويا", "dar", EMPTY_DRAFT);
+    expect(draft.wife).toBe(1);
+    expect(draft.son).toBe(2);
+    expect(draft.father).toBe(1);
   });
 
   it("caps single-occupancy relations (husband/wife/father/mother) at 1 regardless of repetition", () => {

@@ -107,31 +107,49 @@ describe("computeShares — el-gharâwyn special case (Art. 366)", () => {
   });
 });
 
-describe("computeShares — boundary: a family shape this engine cannot resolve", () => {
-  // This documents an actual, verified boundary of the ported engine
-  // (kept exactly as supplied in lib/engine.ts — a faithful line-for-line
-  // port of the validated prototype, not modified here) rather than a
-  // fabricated example: exhaustive hand-tracing of every reachable
-  // combination of this engine's 8 modeled relations shows that
-  // `confidence: "unsupported"` is never actually reached for any valid
-  // non-negative HeirDraft — every combination resolves via the
-  // fardh/asaba/'awl/radd cascade to a sum of exactly 1. The one real gap
-  // found instead: when 'awl is triggered by a spouse + descendant (no
-  // son, no father — so full siblings are neither excluded nor otherwise
-  // handled) AND a full sibling is ALSO present, that sibling is silently
-  // absent from `lines` (the 'awl branch only scales lines already
-  // pushed, and the residue cascade that would normally give a lone
-  // sibling their asaba/fardh line never runs once 'awl has applied) —
-  // yet `confidence` still reports "standard" because the *pushed* lines
-  // still sum to exactly 1 by construction. This test pins that exact,
-  // reproducible behavior down so it's visible rather than silently
-  // relied upon; see README.md's "judgment calls" for the same note.
-  it("silently omits a full sibling from `lines` when 'awl applies and no son/father is present", () => {
-    const result = computeShares(draft({ husband: 1, wife: 1, daughter: 2, full_sister: 1 }));
+function total(lines: ReturnType<typeof computeShares>["lines"]) {
+  return lines.reduce((acc, l) => acc + (l.isEach ? l.share[0] * l.count : l.share[0]) / l.share[1], 0);
+}
+
+describe("computeShares — residuary siblings left with nothing after 'awl", () => {
+  // Husband 1/4 (Art. 343.1) + 2 daughters 2/3 (Art. 345.1) + mother 1/6
+  // (Art. 347.2) = 3/12 + 8/12 + 2/12 = 13/12 > 1, so 'awl scales by 12/13:
+  //   husband = 3/13, each daughter = 4/13 (total 8/13), mother = 2/13.
+  // The full sister is residuary alongside the daughters (Art. 352), but
+  // nothing is left after 'awl, so she inherits 0. She must still appear
+  // in the result rather than silently disappearing (a bug in the original
+  // port, fixed in lib/engine.ts).
+  it("lists a residuary sister with a zero share instead of dropping her", () => {
+    const result = computeShares(draft({ husband: 1, daughter: 2, mother: 1, full_sister: 1 }));
     expect(result.awlApplied).toBe(true);
-    expect(result.confidence).toBe("standard"); // not flagged, despite the gap
-    expect(result.lines.some((l) => l.relation === "full_sister")).toBe(false);
-    const total = result.lines.reduce((acc, l) => acc + (l.isEach ? l.share[0] * l.count : l.share[0]) / l.share[1], 0);
-    expect(total).toBeCloseTo(1, 9);
+    expect(result.confidence).toBe("standard");
+    expect(shareOf(result.lines, "husband")).toEqual([3, 13]);
+    expect(shareOf(result.lines, "daughter")).toEqual([4, 13]);
+    expect(shareOf(result.lines, "mother")).toEqual([2, 13]);
+    const sister = result.lines.find((l) => l.relation === "full_sister")!;
+    expect(sister.share).toEqual([0, 1]);
+    expect(sister.cls).toBe("asaba_with_other");
+    expect(sister.article).toBe("352");
+    expect(total(result.lines)).toBeCloseTo(1, 9);
+  });
+
+  // Same family with a full brother instead: he is a plain residuary
+  // (Art. 348) and likewise inherits 0 once 'awl has consumed the estate.
+  it("lists a residuary brother with a zero share instead of dropping him", () => {
+    const result = computeShares(draft({ husband: 1, daughter: 2, mother: 1, full_brother: 1 }));
+    expect(result.awlApplied).toBe(true);
+    const brother = result.lines.find((l) => l.relation === "full_brother")!;
+    expect(brother.share).toEqual([0, 1]);
+    expect(brother.cls).toBe("asaba");
+    expect(total(result.lines)).toBeCloseTo(1, 9);
+  });
+});
+
+describe("computeShares — contradictory input", () => {
+  // A decedent can leave a husband or a wife, never both.
+  it("refuses to compute a family with both a husband and a wife", () => {
+    const result = computeShares(draft({ husband: 1, wife: 1, daughter: 2 }));
+    expect(result.confidence).toBe("unsupported");
+    expect(result.lines).toEqual([]);
   });
 });
